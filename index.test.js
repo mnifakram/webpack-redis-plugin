@@ -1,5 +1,6 @@
 const WebpackRedisClient = require('./index'),
-  redis = require('redis');
+  redis = require('redis'),
+  fs = require('fs');
 
 let plugin,
   listener,
@@ -9,6 +10,16 @@ let plugin,
 beforeEach(() => {
   plugin = new WebpackRedisClient();
   redis.createClient = jest.fn(() => client);
+  fs.readFileSync = jest.fn(p => {
+    switch (p) {
+      case './asset1':
+        return 'source1';
+      case './asset2':
+        return 'source2';
+      default:
+        return '';
+    }
+  });
   client = {
     set: jest.fn((key, value, callback) => callback()),
     addListener: jest.fn((event, callback) => listener = callback),
@@ -18,10 +29,13 @@ beforeEach(() => {
   };
   compilation = {
     assets: {
-      asset1: { source: () => 'source1' },
-      asset2: { source: () => 'source2' },
+      asset1: { size: () => 4000 },
+      asset2: { size: () => 3000 },
     },
     errors: [],
+    outputOptions: {
+      path: '.'
+    }
   };
 });
 
@@ -84,14 +98,14 @@ describe('getAssets', () => {
   });
 
   it('should transform', () => {
-    plugin.options.transform = (key, asset) => Object({
+    plugin.options.transform = (key, content) => Object({
       key: key + key,
-      value: asset.source() + asset.source(),
+      value: content + content,
     });
 
     expect(plugin.getAssets(compilation)).toEqual([
-      { key: 'asset1asset1', value: 'source1source1' },
-      { key: 'asset2asset2', value: 'source2source2' },
+      { key: 'asset1asset1', content: 'source1source1' },
+      { key: 'asset2asset2', content: 'source2source2' },
     ]);
   });
 });
