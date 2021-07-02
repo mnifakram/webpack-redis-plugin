@@ -8,14 +8,13 @@ This webpack plugin provides an ability to save your assets in [Redis](https://r
 
 ## Install
 ```bash
-npm install --save-dev webpack-redis-plugin
+npm install --save-dev webpack5-redis-plugin
 ```
 
 ## Usage
 In your `webpack.config.js`:
 ```javascript
-const WebpackRedisPlugin = require('webpack-redis-plugin'),
-  sha1 = require('sha1');
+const WebpackRedisPlugin = require('webpack5-redis-plugin');
 
 module.exports = {
   entry: {
@@ -39,19 +38,17 @@ module.exports = {
         host: 'redis.example.com',
         password: 'password',
       },
-      filter: (key, asset) => {
-        return key === 'js/page1.js' && asset.size();
-      },
-      transform: (key, asset) => Object({
-        key: key + '.sha1',
-        value: sha1(asset.source()),
+      filter: key => key === 'js/page1.js',
+      transform: (key, content) => Object({
+        key: key + ':current',
+        value: content+'suffix',
       }),
     }),
   ],
 };
 ```
 
-This config tells the plugin to filter out everything except non-empty `js/page1.js` and save a hash sum of the contents at `js/page1.js.sha1` key.
+This config tells the plugin to filter out everything `js/page1.js` and save key value pair in redis db
 
 ## API
 
@@ -63,16 +60,11 @@ The callback function filters keys/assets that will be set in Redis:
 
 ```javascript
 Function(
-  key: string,
-  asset: {
-    size: Function(): number,
-    source: Function(): string,
-  }
+  key: string
 ): boolean
 ```
 
 - `key` - the destination file name relative to your output directory.
-- `asset` - related webpack asset.
 
 **Default:** `() => true`
 
@@ -82,13 +74,10 @@ The callback function transforms keys and values that will be set in Redis:
 ```javascript
 Function(
   key: string,
-  asset: {
-    size: Function(): number,
-    source: Function(): string,
-  }
+  content: string
 ): { key: string, value: string }
 ```
 - `key` - the destination file name relative to your output directory.
-- `asset` - related webpack asset.
+- `content` - UTF-8 file conent
 
-**Default:** `(key, asset) => { key, value: asset.source() }`
+**Default:** `(key, content) => { key, value: content }`

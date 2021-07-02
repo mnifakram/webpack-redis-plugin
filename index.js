@@ -1,4 +1,4 @@
-const redis = require('redis');
+const redis = require('redis'), fs = require('fs');
 
 /**
  * Webpack Redis Plugin
@@ -44,13 +44,17 @@ class WebpackRedisPlugin {
    * @param {Compilation} compilation
    * @return {Array<Object>}
    */
-  getAssets(compilation) {
-    return Object.keys(compilation.assets)
-      .filter(key => !this.options.filter
-        || this.options.filter(key, compilation.assets[key]))
-      .map(key => this.options.transform
-        ? this.options.transform(key, compilation.assets[key])
-        : { key, value: compilation.assets[key].source() }
+   getAssets({ assets, outputOptions }) {
+    const filteredKeys = Object.keys(assets)
+      .filter(key => !this.options.filter || this.options.filter(key));
+    // eslint-disable-next-line one-var
+    const files = filteredKeys.map(key => ({
+      key,
+      content: fs.readFileSync(`${outputOptions.path}/${key}`, 'utf8'),
+    }));
+    return files.map(f => this.options.transform
+        ? this.options.transform(f.key, f.content)
+        : { key: f.key, content: f.content }
       );
   }
 
